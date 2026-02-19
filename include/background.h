@@ -123,6 +123,19 @@ struct background
   enum varconst_dependence varconst_dep; /**< dependence of the varying fundamental constants as a function of time */
   double varconst_transition_redshift; /**< redshift of transition between varied fundamental constants and normal fundamental constants in the 'varconst_instant' case*/
 
+  /** @name - Glassy Dynamics (GD) parameters for stiffness evolution
+   *  Implements κ(z) stiffness field following Israel-Stewart formalism
+   *  G_eff = G_N / κ, with κ = 1/(1-φ) where φ is defect density
+   *  Reference: Martin (2025) Glassy Dynamics of Spacetime */
+
+  short has_gd; /**< flag: do we use Glassy Dynamics modifications? */
+  double gd_kappa_c; /**< κ_c: stiffness at glass transition (freeze-out), default 1.176 */
+  double gd_z_freeze; /**< z_freeze: redshift of glass transition, default ~0.8-1.0 */
+  double gd_z_onset;  /**< z_i: onset redshift for glass transition (~10^6), clears BBN */
+  double gd_beta;     /**< β: stretched exponent for Kohlrausch transition (0.3-0.9) */
+  double gd_omega_BD; /**< ω: Brans-Dicke parameter for kinetic term, default 50000 */
+  double gd_phi_c; /**< φ_c: critical defect density (Scher-Zallen), default 0.15 */
+
   //@}
 
 
@@ -207,6 +220,9 @@ struct background
 
   int index_bg_varc_alpha;    /**< value of fine structure constant in varying fundamental constants */
   int index_bg_varc_me;      /**< value of effective electron mass in varying fundamental constants */
+
+  int index_bg_gd_kappa;      /**< GD: stiffness κ(z) */
+  int index_bg_gd_G_eff;      /**< GD: effective gravitational coupling G_eff/G_N = 1/κ */
 
   int bg_size_short;  /**< size of background vector in the "short format" */
   int bg_size_normal; /**< size of background vector in the "normal format" */

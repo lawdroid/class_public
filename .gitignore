@@ -4,6 +4,9 @@ build/
 class
 *.prof
 *.ini
+!lcdm_test.ini
+!gd_test_*.ini
+!base_2018_*.ini
 libclass.a
 *out
 python/classy.cpp
@@ -14,3 +17,20 @@ RealSpaceInterface/cache/
 .DS_Store
 doc/manual/html
 doc/manual/latex
+
+# Python build artifacts
+*.egg-info/
+classy.egg-info/
+__pycache__/
+*.so
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+
+# Generated artifacts (local dev tools)
+*.png
+CODE_MAP.html
+CODE_MAP.md
+GD_PLUGIN_MAP.html

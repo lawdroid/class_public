@@ -3372,6 +3372,21 @@ int input_read_parameters_species(struct file_content * pfc,
     }
   }
 
+  /** 9) Glassy Dynamics (GD) parameters
+   *  Implements κ(z) stiffness evolution following Israel-Stewart formalism
+   *  G_eff = G_N / κ, where κ = 1/(1-φ), φ = defect density
+   *  Reference: Martin (2025) Glassy Dynamics of Spacetime */
+
+  /* Read GD parameters */
+  class_read_double("gd_kappa_c",pba->gd_kappa_c);
+  class_read_double("gd_z_freeze",pba->gd_z_freeze);
+  class_read_double("gd_omega_BD",pba->gd_omega_BD);
+  class_read_double("gd_phi_c",pba->gd_phi_c);
+  class_read_double("gd_z_onset",pba->gd_z_onset);
+  class_read_double("gd_beta",pba->gd_beta);
+
+  /* GD verbose output moved to background.c:883 where background_verbose is already set */
+
   return _SUCCESS_;
 
 }
@@ -5928,6 +5943,17 @@ int input_default_params(struct background *pba,
   pba->phi_prime_ini_scf = 1;          //     factors of the radiation attractor values
   /** 9.b.3) Tuning parameter */
   pba->scf_tuning_index = 0;
+
+  /** 10) Glassy Dynamics (GD) parameters
+   *  Reference: Martin (2025) Glassy Dynamics of Spacetime
+   *  κ = stiffness field, G_eff = G_N / κ
+   *  Default: κ = 1 (standard gravity, GD disabled) */
+  pba->gd_kappa_c = 1.0;       /* No GD modification by default */
+  pba->gd_z_freeze = 0.8;      /* Glass transition redshift */
+  pba->gd_omega_BD = 50000.;   /* Brans-Dicke parameter (Cassini constraint) */
+  pba->gd_phi_c = 0.15;        /* Scher-Zallen percolation threshold */
+  pba->gd_z_onset = 1e6;       /* Conservative onset: clears BBN */
+  pba->gd_beta = 0.5;          /* Moderate stretched exponent */
 
   /**
    * Deafult to input_read_parameters_heating

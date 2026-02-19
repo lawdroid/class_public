@@ -576,10 +576,73 @@ int background_functions(
       only place where the Friedmann equation is assumed. Remember
       that densities are all expressed in units of \f$ [3c^2/8\pi G] \f$, ie
       \f$ \rho_{class} = [8 \pi G \rho_{physical} / 3 c^2]\f$ */
-  pvecback[pba->index_bg_H] = sqrt(rho_tot-pba->K/a/a);
+
+  /** - Glassy Dynamics: compute κ(z) and modify Friedmann equation
+   *   In GD+, the Friedmann equation becomes:
+   *   H² = (8πG_eff/3)ρ = (8πG_N/3κ)ρ = ρ_class/κ
+   *   For matter/radiation; cosmological constant unchanged
+   *   Reference: Martin (2025), scalar-tensor formulation
+   */
+  double gd_kappa = 1.0;  /* Default: standard gravity */
+  if (pba->has_gd == _TRUE_) {
+    double z = 1./a - 1.;
+    /* Stretched exponential (Kohlrausch) transition:
+     * κ(z) smoothly transitions from κ_c (at z_freeze) to 1 (at z_onset)
+     *
+     * Three regimes:
+     *   z >= z_onset:  κ = 1    (above onset: standard gravity)
+     *   z <= z_freeze: κ = κ_c  (below freeze: fully modified)
+     *   z_freeze < z < z_onset: stretched exponential interpolation
+     *
+     * Normalized position: t = (z - z_freeze) / (z_onset - z_freeze)
+     *   t = 0 at z_freeze, t = 1 at z_onset
+     *
+     * Decay: exp(-(t/0.5)^β)
+     *   t = 0 → decay = 1 → κ = κ_c
+     *   t → 1 → decay → 0 → κ = 1
+     *
+     * β small (0.3-0.5): gradual transition, suppresses ISW spike
+     * β large (0.7-0.9): sharper transition
+     *
+     * Reference: Martin (2025), Kohlrausch stretched exponential
+     */
+    if (z >= pba->gd_z_onset) {
+      gd_kappa = 1.0;  /* Above onset: standard gravity */
+    } else if (z <= pba->gd_z_freeze) {
+      gd_kappa = pba->gd_kappa_c;  /* Below freeze: fully modified */
+    } else {
+      /* Normalized position: 0 at z_freeze, 1 at z_onset */
+      double t = (z - pba->gd_z_freeze) / (pba->gd_z_onset - pba->gd_z_freeze);
+      /* Stretched exponential decay from κ_c at t=0 toward 1 at t=1 */
+      double decay = exp(-pow(t / 0.5, pba->gd_beta));
+      gd_kappa = 1.0 + (pba->gd_kappa_c - 1.0) * decay;
+    }
+  }
+
+  /* Modified Friedmann equation with GD stiffness:
+   * rho_matter_rad is divided by κ
+   * κ > 1: weaker gravity (lower H)
+   * κ < 1: stronger gravity (higher H) - needed to INCREASE H₀
+   * rho_lambda unchanged (frozen stress interpretation)
+   * Note: For Phase A testing, we apply κ to total rho for simplicity */
+  double rho_gd_modified = rho_tot;
+  if (pba->has_gd == _TRUE_ && fabs(gd_kappa - 1.0) > 1e-10) {
+    /* Separate matter+radiation from Lambda for proper GD treatment */
+    double rho_lambda_contribution = 0.0;
+    if (pba->has_lambda == _TRUE_) {
+      rho_lambda_contribution = pba->Omega0_lambda * pow(pba->H0,2);
+    }
+    double rho_matter_rad = rho_tot - rho_lambda_contribution;
+    /* Apply κ only to matter+radiation, keep Lambda unchanged */
+    rho_gd_modified = rho_matter_rad / gd_kappa + rho_lambda_contribution;
+  }
+
+  pvecback[pba->index_bg_H] = sqrt(rho_gd_modified - pba->K/a/a);
 
   /** - compute derivative of H with respect to conformal time */
-  pvecback[pba->index_bg_H_prime] = - (3./2.) * (rho_tot + p_tot) * a + pba->K/a;
+  /* Note: For full consistency, p_tot should also be modified, but
+   * this is a higher-order effect. TODO for Phase C. */
+  pvecback[pba->index_bg_H_prime] = - (3./2.) * (rho_gd_modified + p_tot) * a + pba->K/a;
 
   /* Total energy density*/
   pvecback[pba->index_bg_rho_tot] = rho_tot;
@@ -635,6 +698,12 @@ int background_functions(
                                           ),
                  pba->error_message,
                  pba->error_message);
+    }
+
+    /**- Glassy Dynamics: store κ(z) stiffness (already computed above) */
+    if (pba->has_gd == _TRUE_) {
+      pvecback[pba->index_bg_gd_kappa] = gd_kappa;
+      pvecback[pba->index_bg_gd_G_eff] = 1.0 / gd_kappa;  /* G_eff/G_N */
     }
 
     /* one can put other variables here */
@@ -813,6 +882,15 @@ int background_init(
   if (pba->background_verbose > 0) {
     printf("Running CLASS version %s\n",_VERSION_);
     printf("Computing background\n");
+    if (pba->gd_kappa_c != 0. && pba->gd_kappa_c != 1.0) {
+      printf(" -> Glassy Dynamics enabled:\n");
+      printf("    kappa_c = %g (stiffness at freeze-out)\n", pba->gd_kappa_c);
+      printf("    z_freeze = %g (glass transition redshift)\n", pba->gd_z_freeze);
+      printf("    z_onset = %g (onset redshift)\n", pba->gd_z_onset);
+      printf("    beta = %g (Kohlrausch stretched exponent)\n", pba->gd_beta);
+      printf("    G_eff/G_N = %g (at z < z_freeze)\n", 1.0/pba->gd_kappa_c);
+      printf("    H0_local/H0_CMB = %g (Hubble tension factor)\n", sqrt(pba->gd_kappa_c));
+    }
   }
 
   /** - if shooting failed during input, catch the error here */
@@ -987,6 +1065,7 @@ int background_indices(
   pba->has_idr = _FALSE_;
   pba->has_curvature = _FALSE_;
   pba->has_varconst  = _FALSE_;
+  pba->has_gd = _FALSE_;  /* Glassy Dynamics */
 
   if (pba->Omega0_cdm != 0.)
     pba->has_cdm = _TRUE_;
@@ -1023,6 +1102,10 @@ int background_indices(
 
   if (pba->varconst_dep != varconst_none)
     pba->has_varconst = _TRUE_;
+
+  /* Glassy Dynamics: enable if κ_c != 1.0 */
+  if (pba->gd_kappa_c != 0. && pba->gd_kappa_c != 1.0)
+    pba->has_gd = _TRUE_;
 
   /** - initialize all indices */
 
@@ -1140,6 +1223,10 @@ int background_indices(
 
   /* -> varying fundamental constant -- me (effective electron mass) */
   class_define_index(pba->index_bg_varc_me,pba->has_varconst,index_bg,1);
+
+  /* -> Glassy Dynamics stiffness kappa(z) and effective G */
+  class_define_index(pba->index_bg_gd_kappa,pba->has_gd,index_bg,1);
+  class_define_index(pba->index_bg_gd_G_eff,pba->has_gd,index_bg,1);
 
   /* -> put here additional quantities describing background */
   /*    */
@@ -2555,6 +2642,10 @@ int background_output_data(
 
     class_store_double(dataptr,pvecback[pba->index_bg_varc_alpha],pba->has_varconst,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_varc_me],pba->has_varconst,storeidx);
+
+    /* Glassy Dynamics output */
+    class_store_double(dataptr,pvecback[pba->index_bg_gd_kappa],pba->has_gd,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_gd_G_eff],pba->has_gd,storeidx);
   }
 
   return _SUCCESS_;

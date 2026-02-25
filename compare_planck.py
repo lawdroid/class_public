@@ -35,13 +35,13 @@ CONFIGS = {
         'ls': '-',
         'label': r'$\Lambda$CDM (Planck 2018 best-fit)',
     },
-    'KR_0.5': {
-        'ini': 'gd_test_KR.ini',
-        'cl': 'output/gd_test_KR_00_cl.dat',
-        'bg': 'output/gd_test_KR_00_background.dat',
-        'color': 'red',
+    'Compliant': {
+        'ini': 'gd_test_compliant.ini',
+        'cl': 'output/gd_compliant_00_cl.dat',
+        'bg': 'output/gd_compliant_00_background.dat',
+        'color': 'blue',
         'ls': '-',
-        'label': r'GD Kohlrausch $\kappa_c=1.176$, $\beta=0.5$',
+        'label': r'GD Compliant $\kappa_c=0.85$, $\beta=0.5$',
     },
 }
 
@@ -172,16 +172,20 @@ def main():
         print(f"  Sound horizon r_s(z=1100) = {rs_1100:.4f} Mpc")
 
     # Hubble tension diagnostics
-    if 'LCDM' in models and 'KR_0.5' in models:
+    # Hubble tension diagnostics for any GD model present
+    gd_models = {k: v for k, v in models.items() if k != 'LCDM'}
+    if 'LCDM' in models and gd_models:
         rs_lcdm = get_sound_horizon_at_z(models['LCDM']['bg'], 1089)
-        rs_kr = get_sound_horizon_at_z(models['KR_0.5']['bg'], 1089)
-        delta_rs = (rs_kr - rs_lcdm) / rs_lcdm
-        h0_input = 67.36  # from .ini
-        h0_implied = h0_input * rs_kr / rs_lcdm
-        print(f"\n  Delta r_s / r_s = {delta_rs*100:.2f}%")
-        print(f"  Input H0 = {h0_input} km/s/Mpc")
-        print(f"  Implied H0 (from r_s ratio) = {h0_implied:.1f} km/s/Mpc")
-        print(f"  Scaling: 0.35 * (kappa - 1) = {0.35 * 0.176:.4f} = {0.35 * 0.176 * 100:.2f}%")
+        for gd_name, gd_m in gd_models.items():
+            rs_gd = get_sound_horizon_at_z(gd_m['bg'], 1089)
+            delta_rs = (rs_gd - rs_lcdm) / rs_lcdm
+            h0_input = 67.36  # from .ini
+            # H0 ~ 1/r_s at fixed angular scale: smaller r_s => larger H0
+            h0_implied = h0_input * rs_lcdm / rs_gd
+            print(f"\n  {gd_name}:")
+            print(f"  Delta r_s / r_s = {delta_rs*100:.2f}%")
+            print(f"  Input H0 = {h0_input} km/s/Mpc")
+            print(f"  Implied H0 (from r_s ratio) = {h0_implied:.2f} km/s/Mpc")
 
     # ----- Run beta scan -----
     print("\n" + "-" * 60)
@@ -333,7 +337,7 @@ def main():
         dl_2 = m['dl'][0]  # l=2
         idx_220 = np.argmin(np.abs(m['ell'] - 220))
         dl_220 = m['dl'][idx_220]
-        h0_implied = 67.36 * rs / rs_lcdm
+        h0_implied = 67.36 * rs_lcdm / rs
         print(f"{name:<30} {rs:>10.4f} {dl_2:>12.1f} {dl_220:>12.1f} {h0_implied:>12.1f}")
 
     for beta, res in sorted(beta_results.items()):
@@ -341,7 +345,7 @@ def main():
         dl_2 = res['dl'][0]
         idx_220 = np.argmin(np.abs(res['ell'] - 220))
         dl_220 = res['dl'][idx_220]
-        h0_implied = 67.36 * res['rs'] / rs_lcdm
+        h0_implied = 67.36 * rs_lcdm / res['rs']
         print(f"{name:<30} {res['rs']:>10.4f} {dl_2:>12.1f} {dl_220:>12.1f} {h0_implied:>12.1f}")
 
     print("\nDone.")

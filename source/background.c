@@ -604,18 +604,18 @@ int background_functions(
      * β small (0.3-0.5): gradual transition, suppresses ISW spike
      * β large (0.7-0.9): sharper transition
      *
-     * Reference: Martin (2025), Kohlrausch stretched exponential
+     * Reference: Martin (2025), compliant inclusion / stretched exponential
      */
     if (z >= pba->gd_z_onset) {
-      gd_kappa = 1.0;  /* Above onset: standard gravity */
+      gd_kappa = pba->gd_kappa_c;  /* Above onset: modified gravity (compliant) */
     } else if (z <= pba->gd_z_freeze) {
-      gd_kappa = pba->gd_kappa_c;  /* Below freeze: fully modified */
+      gd_kappa = 1.0;  /* Below freeze: standard gravity */
     } else {
       /* Normalized position: 0 at z_freeze, 1 at z_onset */
       double t = (z - pba->gd_z_freeze) / (pba->gd_z_onset - pba->gd_z_freeze);
-      /* Stretched exponential decay from κ_c at t=0 toward 1 at t=1 */
+      /* Stretched exponential: kappa_c at z_onset (decay~0), 1.0 at z_freeze (decay~1) */
       double decay = exp(-pow(t / 0.5, pba->gd_beta));
-      gd_kappa = 1.0 + (pba->gd_kappa_c - 1.0) * decay;
+      gd_kappa = pba->gd_kappa_c + (1.0 - pba->gd_kappa_c) * decay;
     }
   }
 

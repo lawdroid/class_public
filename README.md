@@ -120,9 +120,19 @@ Three panels: (1) TT spectrum comparison, (2) residuals vs Planck, (3) chi2/dof 
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lawdroid/class_public/blob/feature/kappa-evolution/GD_CLASS_Explorer.ipynb)
 
-**Click the badge above** to open the GD-CLASS Explorer notebook in Google Colab. No compilation, no installation -- just click "Runtime -> Run all" and move the sliders.
+**Click the badge above** to open the current GD-CLASS Explorer in Google Colab. No compilation, no installation -- just click "Runtime -> Run all" and move the sliders.
 
-The notebook shows pre-computed CMB spectra for LCDM, GD kappa=0.98, and GD kappa=0.96 compared to Planck 2018 data. Interactive sliders compute kappa(z), H(z), r_s, and H_0 in real time.
+### Research Timeline (3 notebooks)
+
+The theory evolved through iterative testing. Each notebook is self-contained and documents what was tried and what was learned:
+
+| Version | Date | Notebook | Model | Key Finding |
+|---------|------|----------|-------|-------------|
+| v1 | Feb 19 | [Rigid Inclusion](GD_CLASS_Explorer_v1_rigid.ipynb) | kappa=1.176 (weaker gravity) | H_0 formula was wrong; rigid model makes tension worse |
+| v2 | Feb 26 | [Compliant Inclusion](GD_CLASS_Explorer_v2_compliant.ipynb) | kappa=0.85 (stronger gravity) | Step gives H_0=73 but breaks CMB; smooth kills the effect |
+| **v3** | **Mar 5** | **[Parameter-Fitted](GD_CLASS_Explorer.ipynb)** | **kappa=0.96-0.98** | **Re-fitted params: H_0=71 with chi2/dof=1.26** |
+
+**Narrative:** v1 discovered the H_0 formula error and that rigid inclusions go the wrong direction. v2 pivoted to compliant inclusions and confirmed H_0=73 is achievable but only with a sharp transition that destroys the CMB. v3 solved this by re-fitting cosmological parameters for each kappa, finding the tradeoff curve between H_0 and CMB fit quality.
 
 ---
 

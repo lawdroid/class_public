@@ -668,6 +668,12 @@ int background_functions(
   /** - compute relativistic density to total density ratio */
   pvecback[pba->index_bg_Omega_r] = rho_r / rho_crit;
 
+  /** - Glassy Dynamics: store κ(z) in normal vector (needed by perturbations) */
+  if (pba->has_gd == _TRUE_) {
+    pvecback[pba->index_bg_gd_kappa] = gd_kappa;
+    pvecback[pba->index_bg_gd_G_eff] = 1.0 / gd_kappa;  /* G_eff/G_N */
+  }
+
   /** - compute other quantities in the exhaustive, redundant format */
   if (return_format == long_info) {
 
@@ -698,12 +704,6 @@ int background_functions(
                                           ),
                  pba->error_message,
                  pba->error_message);
-    }
-
-    /**- Glassy Dynamics: store κ(z) stiffness (already computed above) */
-    if (pba->has_gd == _TRUE_) {
-      pvecback[pba->index_bg_gd_kappa] = gd_kappa;
-      pvecback[pba->index_bg_gd_G_eff] = 1.0 / gd_kappa;  /* G_eff/G_N */
     }
 
     /* one can put other variables here */
@@ -1186,6 +1186,10 @@ int background_indices(
   /*    */
   /*    */
 
+  /* -> Glassy Dynamics stiffness kappa(z) and effective G */
+  class_define_index(pba->index_bg_gd_kappa,pba->has_gd,index_bg,1);
+  class_define_index(pba->index_bg_gd_G_eff,pba->has_gd,index_bg,1);
+
   /* - end of indices in the normal vector of background values */
   pba->bg_size_normal = index_bg;
 
@@ -1223,10 +1227,6 @@ int background_indices(
 
   /* -> varying fundamental constant -- me (effective electron mass) */
   class_define_index(pba->index_bg_varc_me,pba->has_varconst,index_bg,1);
-
-  /* -> Glassy Dynamics stiffness kappa(z) and effective G */
-  class_define_index(pba->index_bg_gd_kappa,pba->has_gd,index_bg,1);
-  class_define_index(pba->index_bg_gd_G_eff,pba->has_gd,index_bg,1);
 
   /* -> put here additional quantities describing background */
   /*    */

@@ -6543,6 +6543,7 @@ int perturbations_einstein(
 
   double k2,a,a2,a_prime_over_a;
   double s2_squared;
+  double gd_G_eff_ratio;
   double shear_g = 0.;
   double shear_idr = 0.;
 
@@ -6553,6 +6554,12 @@ int perturbations_einstein(
   a2 = a * a;
   a_prime_over_a = ppw->pvecback[pba->index_bg_H]*a;
   s2_squared = 1.-3.*pba->K/k2;
+
+  /** - Glassy Dynamics: G_eff/G_N ratio for perturbation equations
+   *   Disabled: background-only mode. For omega_BD=50000, perturbation
+   *   corrections are O(1/omega) ~ 0.002% — negligible. */
+  gd_G_eff_ratio = 1.0;
+  /* Phase C disabled: gd_G_eff_ratio = ppw->pvecback[pba->index_bg_gd_G_eff]; */
 
   /** - sum up perturbations from all species */
   class_call(perturbations_total_stress_energy(ppr,pba,pth,ppt,index_md,k,y,ppw),
@@ -6579,11 +6586,11 @@ int perturbations_einstein(
          y[ppw->pv->index_pt_phi], which derivative is given by the
          second equation below (credits to Guido Walter Pettinari). */
 
-      /* equation for psi */
-      ppw->pvecmetric[ppw->index_mt_psi] = y[ppw->pv->index_pt_phi] - 4.5 * (a2/k2) * ppw->rho_plus_p_shear;
+      /* equation for psi (GD: G_eff multiplies gravitational source) */
+      ppw->pvecmetric[ppw->index_mt_psi] = y[ppw->pv->index_pt_phi] - 4.5 * gd_G_eff_ratio * (a2/k2) * ppw->rho_plus_p_shear;
 
-      /* equation for phi' */
-      ppw->pvecmetric[ppw->index_mt_phi_prime] = -a_prime_over_a * ppw->pvecmetric[ppw->index_mt_psi] + 1.5 * (a2/k2) * ppw->rho_plus_p_theta;
+      /* equation for phi' (GD: G_eff multiplies gravitational source) */
+      ppw->pvecmetric[ppw->index_mt_phi_prime] = -a_prime_over_a * ppw->pvecmetric[ppw->index_mt_psi] + 1.5 * gd_G_eff_ratio * (a2/k2) * ppw->rho_plus_p_theta;
 
       /* eventually, infer radiation streaming approximation for
          gamma and ur (this is exactly the right place to do it
@@ -6607,9 +6614,9 @@ int perturbations_einstein(
     /* synchronous gauge */
     if (ppt->gauge == synchronous) {
 
-      /* first equation involving total density fluctuation */
+      /* first equation involving total density fluctuation (GD: G_eff) */
       ppw->pvecmetric[ppw->index_mt_h_prime] =
-        ( k2 * s2_squared * y[ppw->pv->index_pt_eta] + 1.5 * a2 * ppw->delta_rho)/(0.5*a_prime_over_a);  /* h' */
+        ( k2 * s2_squared * y[ppw->pv->index_pt_eta] + 1.5 * gd_G_eff_ratio * a2 * ppw->delta_rho)/(0.5*a_prime_over_a);  /* h' */
 
       /* eventually, infer radiation streaming approximation for
          gamma and ur (this is exactly the right place to do it
@@ -6631,14 +6638,14 @@ int perturbations_einstein(
         ppw->rho_plus_p_theta += 4./3.*ppw->pvecback[pba->index_bg_rho_idr]*ppw->rsa_theta_idr;
       }
 
-      /* second equation involving total velocity */
-      ppw->pvecmetric[ppw->index_mt_eta_prime] = (1.5 * a2 * ppw->rho_plus_p_theta + 0.5 * pba->K * ppw->pvecmetric[ppw->index_mt_h_prime])/k2/s2_squared;  /* eta' */
+      /* second equation involving total velocity (GD: G_eff) */
+      ppw->pvecmetric[ppw->index_mt_eta_prime] = (1.5 * gd_G_eff_ratio * a2 * ppw->rho_plus_p_theta + 0.5 * pba->K * ppw->pvecmetric[ppw->index_mt_h_prime])/k2/s2_squared;  /* eta' */
 
-      /* third equation involving total pressure */
+      /* third equation involving total pressure (GD: G_eff on pressure source) */
       ppw->pvecmetric[ppw->index_mt_h_prime_prime] =
         - 2. * a_prime_over_a * ppw->pvecmetric[ppw->index_mt_h_prime]
         + 2. * k2 * s2_squared * y[ppw->pv->index_pt_eta]
-        - 9. * a2 * ppw->delta_p;
+        - 9. * gd_G_eff_ratio * a2 * ppw->delta_p;
 
       /* alpha = (h'+6eta')/2k^2 */
       ppw->pvecmetric[ppw->index_mt_alpha] = (ppw->pvecmetric[ppw->index_mt_h_prime] + 6.*ppw->pvecmetric[ppw->index_mt_eta_prime])/2./k2;
@@ -6667,11 +6674,11 @@ int perturbations_einstein(
         }
       }
 
-      /* fourth equation involving total shear */
+      /* fourth equation involving total shear (GD: G_eff on shear source) */
       ppw->pvecmetric[ppw->index_mt_alpha_prime] =  //TBC
         - 2. * a_prime_over_a * ppw->pvecmetric[ppw->index_mt_alpha]
         + y[ppw->pv->index_pt_eta]
-        - 4.5 * (a2/k2) * ppw->rho_plus_p_shear;
+        - 4.5 * gd_G_eff_ratio * (a2/k2) * ppw->rho_plus_p_shear;
 
     }
 
@@ -6800,6 +6807,7 @@ int perturbations_total_stress_energy(
   double X, Y, Z, X_prime, Y_prime, Z_prime;
   double Gamma_fld, S, S_prime, theta_t, theta_t_prime, rho_plus_p_theta_fld_prime;
   double delta_p_b_over_rho_b;
+  double gd_G_eff_ratio;
 
   /** - wavenumber and scale factor related quantities */
 
@@ -6807,6 +6815,12 @@ int perturbations_total_stress_energy(
   a2 = a * a;
   a_prime_over_a = ppw->pvecback[pba->index_bg_H]*a;
   k2 = k*k;
+
+  /** - Glassy Dynamics: G_eff/G_N ratio for perturbation equations
+   *   Disabled: background-only mode. For omega_BD=50000, perturbation
+   *   corrections are O(1/omega) ~ 0.002% — negligible. */
+  gd_G_eff_ratio = 1.0;
+  /* Phase C disabled: gd_G_eff_ratio = ppw->pvecback[pba->index_bg_gd_G_eff]; */
 
   /** - for scalar modes */
 
@@ -7199,16 +7213,16 @@ int perturbations_total_stress_energy(
           Gamma_fld = y[ppw->pv->index_pt_Gamma_fld];
 
         if (ppt->gauge == synchronous){
-          alpha = (y[ppw->pv->index_pt_eta]+1.5*a2/k2/s2sq*(ppw->delta_rho+3*a_prime_over_a/k2*ppw->rho_plus_p_theta)-Gamma_fld)/a_prime_over_a;
-          alpha_prime = -2. * a_prime_over_a * alpha + y[ppw->pv->index_pt_eta] - 4.5 * (a2/k2) * ppw->rho_plus_p_shear;
+          alpha = (y[ppw->pv->index_pt_eta]+1.5*gd_G_eff_ratio*a2/k2/s2sq*(ppw->delta_rho+3*a_prime_over_a/k2*ppw->rho_plus_p_theta)-Gamma_fld)/a_prime_over_a;
+          alpha_prime = -2. * a_prime_over_a * alpha + y[ppw->pv->index_pt_eta] - 4.5 * gd_G_eff_ratio * (a2/k2) * ppw->rho_plus_p_shear;
           metric_euler = 0.;
         }
         else{
           alpha = 0.;
           alpha_prime = 0.;
-          metric_euler = k2*y[ppw->pv->index_pt_phi] - 4.5*a2*ppw->rho_plus_p_shear;
+          metric_euler = k2*y[ppw->pv->index_pt_phi] - 4.5*gd_G_eff_ratio*a2*ppw->rho_plus_p_shear;
         }
-        ppw->S_fld = ppw->pvecback[pba->index_bg_rho_fld]*(1.+w_fld)*1.5*a2/k2/a_prime_over_a*
+        ppw->S_fld = ppw->pvecback[pba->index_bg_rho_fld]*(1.+w_fld)*1.5*gd_G_eff_ratio*a2/k2/a_prime_over_a*
           (ppw->rho_plus_p_theta/ppw->rho_plus_p_tot+k2*alpha);
         // note that the last terms in the ratio do not include fld, that's correct, it's the whole point of the PPF scheme
         /** We must now check the stiffness criterion again and set Gamma_prime_fld accordingly. */

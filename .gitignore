@@ -6,6 +6,7 @@ class
 *.ini
 !lcdm_test.ini
 !gd_test_*.ini
+!gd_bestfit_*.ini
 !base_2018_*.ini
 libclass.a
 *out
@@ -31,6 +32,7 @@ venv/
 
 # Generated artifacts (local dev tools)
 *.png
+!gd_bestfit_vs_planck.png
 CODE_MAP.html
 CODE_MAP.md
 GD_PLUGIN_MAP.html

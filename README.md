@@ -189,7 +189,108 @@ Set parameters in `.ini` files. When `gd_kappa_c = 1.0` (default), GD is disable
 | **B** | Smooth stretched exponential transition | Done |
 | **C** | G_eff in perturbation equations | Done (disabled -- makes CMB worse) |
 | **D** | Parameter fitting to Planck TT | **Done (grid search)** |
-| **E** | MCMC fitting with proper contours | TODO |
+| **E** | MCMC fitting with proper contours | **In progress** |
+
+---
+
+## Phase E: MCMC Parameter Estimation
+
+### What We Are Doing
+
+The grid search (Phase D) found that kappa_c = 0.98 gives H_0 = 71 with chi2/dof = 1.26. But a grid search tests only ~100 hand-picked points. To publish, we need to answer: **what does the data actually prefer?**
+
+MCMC (Markov Chain Monte Carlo) explores the full 7-dimensional parameter space simultaneously, sampling tens of thousands of points weighted by how well each one fits Planck data. Instead of "we tested kappa = 0.96, 0.97, 0.98, 0.99, 1.00", we get "the data constrains kappa_c = 0.98 +/- 0.01 at 68% confidence."
+
+### The 7 Parameters
+
+The CMB power spectrum is determined by 6 standard cosmological parameters plus one GD parameter:
+
+| Parameter | Symbol | Role |
+|-----------|--------|------|
+| h | H_0 / 100 | Expansion rate today |
+| omega_b | Omega_b h^2 | Baryon (normal matter) density |
+| omega_cdm | Omega_c h^2 | Cold dark matter density |
+| n_s | spectral index | Tilt of primordial fluctuations from inflation |
+| ln(10^10 A_s) | amplitude | Overall strength of primordial fluctuations |
+| tau_reio | optical depth | How much CMB was scattered by reionized gas |
+| **kappa_c** | **GD stiffness** | **Spacetime stiffness before recombination (1.0 = LCDM)** |
+
+Each MCMC sample draws all 7 simultaneously, runs the CLASS Boltzmann solver, computes the CMB TT power spectrum, and compares to Planck 2018 data via chi-squared.
+
+### How MCMC Works (Conceptually)
+
+1. Start 16 "walkers" near the grid-search best-fit (h=0.71, kappa_c=0.98)
+2. Each walker proposes a random step in 7D parameter space
+3. Run CLASS for the proposed parameters, compute chi2 vs Planck
+4. If the fit improves: accept the step. If it worsens: accept with probability exp(-delta_chi2/2)
+5. Repeat thousands of times. The walkers explore the region of good fits, spending more time where the fit is better
+6. After convergence, the collection of walker positions IS the posterior distribution
+
+The accept/reject rule means walkers naturally concentrate where chi2 is low (good fit) but occasionally visit worse regions, mapping out the full shape of the posterior.
+
+### What We Expect to Learn
+
+**1. Does the data prefer kappa_c < 1?**
+
+If the posterior for kappa_c peaks below 1.0 and the 95% confidence interval excludes 1.0, that would be evidence that GD is preferred over LCDM. If kappa_c = 1.0 is well within the posterior, GD adds nothing.
+
+**2. H_0 posterior with error bars**
+
+The grid search says H_0 ~ 71 for kappa_c = 0.98. MCMC will give the full distribution: "H_0 = 71.0 +/- 1.5 at 68% confidence" — directly comparable to Planck (67.4 +/- 0.5) and SH0ES (73.0 +/- 1.0).
+
+**3. Parameter degeneracies (corner plot)**
+
+The 7x7 "corner plot" shows every pair of parameters plotted against each other. We expect:
+- **kappa_c vs n_s correlation**: lower kappa requires higher n_s to compensate peak distortions
+- **tau vs A_s degeneracy**: the CMB constrains A_s * exp(-2*tau), not each separately
+- **kappa_c vs h correlation**: lower kappa enables higher H_0
+
+These degeneracies are new information that the grid search cannot provide.
+
+**4. Is the n_s tension real?**
+
+The grid search preferred n_s ~ 1.0 (scale-invariant), which conflicts with Planck's n_s = 0.965. MCMC will show whether this is a hard requirement or just a soft preference — the posterior width on n_s will tell us.
+
+### Technical Details
+
+| Setting | Value | Rationale |
+|---------|-------|-----------|
+| Sampler | emcee (affine-invariant ensemble) | Handles correlated parameters without manual tuning |
+| Walkers | 16 | Minimum for 7 dimensions (>= 2 * ndim) |
+| Workers | 8 (parallel) | 8 simultaneous CLASS runs via subprocess |
+| Steps | 3000 | ~48,000 raw samples, ~40,000 after burn-in |
+| Burn-in | 500 steps | Discard initial exploration before convergence |
+| tau prior | Gaussian(0.054, 0.007) | TT-only data cannot constrain tau alone; prior from Planck low-ell polarization |
+| Convergence | Gelman-Rubin R-hat < 1.1 | Standard threshold for all 7 parameters |
+
+Estimated runtime: ~3 days on 8 cores (~90 seconds per step).
+
+### Running the MCMC
+
+```bash
+# Smoke test (3 minutes)
+python3 gd_mcmc.py --nwalkers 16 --nsteps 5 --workers 2
+
+# Production run (~3 days, background)
+nohup python3 gd_mcmc.py --nwalkers 16 --nsteps 3000 --workers 8 > mcmc_log.txt 2>&1 &
+
+# Resume if interrupted
+python3 gd_mcmc.py --resume --nsteps 5000 --workers 8
+
+# Generate plots from completed chain
+python3 gd_mcmc.py --plots-only --burn-in 500
+```
+
+### Output
+
+| File | Description |
+|------|-------------|
+| `output/gd_mcmc_chains.h5` | Raw MCMC chains (HDF5, crash-resumable) |
+| `output/gd_mcmc_corner.png` | 7x7 triangle plot of posterior distributions |
+| `output/gd_mcmc_corner_h0.png` | Corner plot including derived H_0 |
+| `output/gd_mcmc_traces.png` | Trace plots (parameter vs step, for convergence check) |
+| `output/gd_mcmc_bestfit.png` | Best-fit C_l spectrum vs Planck |
+| `output/gd_mcmc_summary.txt` | Parameter table: median, 68% CI, 95% CI, R-hat |
 
 ---
 

@@ -1,0 +1,53 @@
+============================================================
+PAPER NUMBERS
+============================================================
+
+--- LCDM Reference ---
+  r_s(z=1089) = 144.84 Mpc
+  D_A(z=1089) = 12.74 Mpc
+  H0 = 67.4 km/s/Mpc
+  chi2 = 2880.6 / 2471 dof
+  chi2/dof = 1.1658
+
+--- GD kappa=0.99 ---
+  H0 = 67.9 km/s/Mpc
+  r_s = 143.93 Mpc
+  Delta_r_s = -0.62%
+  chi2/dof = 1.1829
+  Delta_chi2 vs LCDM = 42.4
+  Hubble tension: 4.8sigma (LCDM) -> 4.4sigma (GD)
+
+--- GD kappa=0.97 ---
+  H0 = 69.4 km/s/Mpc
+  r_s = 143.18 Mpc
+  Delta_r_s = -1.14%
+  chi2/dof = 1.3067
+  Delta_chi2 vs LCDM = 348.2
+  Hubble tension: 4.8sigma (LCDM) -> 3.1sigma (GD)
+
+--- GD kappa=0.96 ---
+  H0 = 70.4 km/s/Mpc
+  r_s = 141.84 Mpc
+  Delta_r_s = -2.07%
+  chi2/dof = 1.4570
+  Delta_chi2 vs LCDM = 719.6
+  Hubble tension: 4.8sigma (LCDM) -> 2.3sigma (GD)
+
+--- GD kappa=0.95 ---
+  H0 = 70.4 km/s/Mpc
+  r_s = 139.92 Mpc
+  Delta_r_s = -3.39%
+  chi2/dof = 1.6913
+  Delta_chi2 vs LCDM = 1298.6
+  Hubble tension: 4.8sigma (LCDM) -> 2.3sigma (GD)
+
+--- 95% CL Constraint ---
+  LCDM chi2 = 2880.6
+  Threshold (Delta chi2 = 3.84) = 2884.5
+  95% CL lower bound: kappa > 0.999
+  Maximum H0 at 95% CL: 67.5 km/s/Mpc
+
+--- Phase C Justification ---
+  omega_BD = 50,000 (Cassini-compatible)
+  Perturbation correction = 1/omega_BD = 0.002%
+  Background-only is correct to leading order in 1/omega_BD

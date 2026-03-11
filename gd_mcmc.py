@@ -16,9 +16,11 @@ Usage:
 """
 
 import argparse
+import logging
 import os
 import sys
 import subprocess
+import time
 import tempfile
 import uuid
 from pathlib import Path
@@ -28,6 +30,14 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
+# Logging setup
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%H:%M:%S',
+)
+log = logging.getLogger('gd_mcmc')
 import emcee
 import h5py
 
@@ -205,8 +215,12 @@ def log_prior(theta):
     return lp
 
 
+_eval_count = 0
+_eval_start_time = None
+
 def log_likelihood(theta):
     """Log likelihood: run CLASS, compare to Planck TT."""
+    global _eval_count, _eval_start_time
     ensure_planck_loaded()
 
     h, omega_b, omega_cdm, n_s, ln10As, tau_reio, gd_kappa_c = theta
@@ -218,12 +232,29 @@ def log_likelihood(theta):
         'kappa_c': gd_kappa_c, **GD_FIXED,
     }
 
+    t0 = time.time()
     result = run_class_subprocess(params)
+    dt = time.time() - t0
+
     if result is None:
+        log.warning(f"CLASS FAILED | h={h:.4f} kc={gd_kappa_c:.4f} n_s={n_s:.4f} ({dt:.1f}s)")
         return -np.inf
 
     model_ell, model_dl = result
     chi2 = compute_chi2(model_ell, model_dl, _planck_ell, _planck_dl, _planck_sigma)
+    ndof = np.sum((_planck_ell >= 30) & (_planck_ell <= 2500))
+    chi2_red = chi2 / ndof
+
+    _eval_count += 1
+    if _eval_start_time is None:
+        _eval_start_time = time.time()
+    elapsed = time.time() - _eval_start_time
+    rate = _eval_count / elapsed if elapsed > 0 else 0
+
+    if _eval_count % 16 == 0:  # log every 16 evals (= 1 step for 16 walkers)
+        log.info(f"eval #{_eval_count:>5d} | chi2/dof={chi2_red:.3f} H0={h*100:.1f} kc={gd_kappa_c:.3f} "
+                 f"n_s={n_s:.4f} | {dt:.1f}s | {rate:.1f} eval/min")
+
     return -0.5 * chi2
 
 
@@ -265,8 +296,9 @@ def run_mcmc(nwalkers, nsteps, workers, resume):
     backend = emcee.backends.HDFBackend(str(CHAIN_FILE))
 
     if resume and CHAIN_FILE.exists():
-        print(f"Resuming from {CHAIN_FILE} ({backend.iteration} steps already done)")
-        p0 = None  # emcee resumes from last position
+        log.info(f"Resuming from {CHAIN_FILE} ({backend.iteration} steps already done)")
+        # Get last walker positions from saved chain
+        p0 = backend.get_last_sample()
     else:
         backend.reset(nwalkers, ndim)
         # Initialize walkers in a ball around the best-fit
@@ -275,19 +307,51 @@ def run_mcmc(nwalkers, nsteps, workers, resume):
         for i, name in enumerate(PARAM_NAMES):
             lo, hi = PRIOR_BOUNDS[name]
             p0[:, i] = np.clip(p0[:, i], lo + 1e-6, hi - 1e-6)
-        print(f"Starting fresh: {nwalkers} walkers, {nsteps} steps, {workers} workers")
+        log.info(f"Starting fresh: {nwalkers} walkers, {nsteps} steps, {workers} workers")
+        log.info(f"Initial center: h={P0_CENTER[0]}, kc={P0_CENTER[6]}, n_s={P0_CENTER[3]}")
+
+    log.info("Starting MCMC sampling...")
+    step_start = time.time()
 
     if workers > 1:
         with Pool(workers) as pool:
             sampler = emcee.EnsembleSampler(
                 nwalkers, ndim, log_probability, pool=pool, backend=backend
             )
-            sampler.run_mcmc(p0, nsteps, progress=True)
+            for step, state in enumerate(sampler.sample(p0, iterations=nsteps, progress=True)):
+                if (step + 1) % 10 == 0:
+                    elapsed = time.time() - step_start
+                    rate = (step + 1) / elapsed * 3600
+                    best_logp = np.max(state.log_prob)
+                    median_params = np.median(state.coords, axis=0)
+                    accept = np.mean(sampler.acceptance_fraction)
+                    log.info(
+                        f"Step {step+1:>4d}/{nsteps} | "
+                        f"best logP={best_logp:.1f} | "
+                        f"H0={median_params[0]*100:.1f} kc={median_params[6]:.3f} n_s={median_params[3]:.4f} | "
+                        f"accept={accept:.2f} | "
+                        f"{rate:.0f} steps/hr | "
+                        f"ETA {(nsteps-step-1)/rate*60:.0f} min"
+                    )
     else:
         sampler = emcee.EnsembleSampler(
             nwalkers, ndim, log_probability, backend=backend
         )
-        sampler.run_mcmc(p0, nsteps, progress=True)
+        for step, state in enumerate(sampler.sample(p0, iterations=nsteps, progress=True)):
+            if (step + 1) % 10 == 0:
+                elapsed = time.time() - step_start
+                rate = (step + 1) / elapsed * 3600
+                best_logp = np.max(state.log_prob)
+                median_params = np.median(state.coords, axis=0)
+                accept = np.mean(sampler.acceptance_fraction)
+                log.info(
+                    f"Step {step+1:>4d}/{nsteps} | "
+                    f"best logP={best_logp:.1f} | "
+                    f"H0={median_params[0]*100:.1f} kc={median_params[6]:.3f} n_s={median_params[3]:.4f} | "
+                    f"accept={accept:.2f} | "
+                    f"{rate:.0f} steps/hr | "
+                    f"ETA {(nsteps-step-1)/rate*60:.0f} min"
+                )
 
     print(f"\nDone. Total steps: {backend.iteration}")
     print(f"Chain shape: {backend.get_chain().shape}")

@@ -116,13 +116,17 @@ Three panels: (1) TT spectrum comparison, (2) residuals vs Planck, (3) chi2/dof 
 
 ---
 
-## MCMC Results — Interactive Explorer (No Installation Required)
+## Interactive Results — No Installation Required
+
+### Latest: Late Glass Model (v5)
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lawdroid/class_public/blob/feature/kappa-evolution/GD_Late_Glass_v5.ipynb)
+
+Tom proposed inverting the κ(z) timeline: κ = 1.0 before recombination (protecting r_s), κ_c after recombination (modifying D_A), decaying back to 1.0 today. The 2D grid scan (56 CLASS runs) shows the χ² wall persists — at every H₀, the best κ is 1.000.
+
+### MCMC Results (v4)
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lawdroid/class_public/blob/feature/kappa-evolution/GD_MCMC_Results_v4.ipynb)
-
-**Click the badge above** to open the MCMC results notebook in Google Colab. No compilation, no installation -- just click "Runtime -> Run all" and move the sliders.
-
-### Key Result (March 12, 2026)
 
 Full 7-parameter MCMC (6 standard + kappa) against 2,471 Planck TT data points:
 
@@ -133,7 +137,16 @@ Full 7-parameter MCMC (6 standard + kappa) against 2,471 Planck TT data points:
 
 H₀ was free — the data pulled it to 66.8. kappa = 1.176 is excluded at >100σ.
 
-### Research Timeline (4 notebooks)
+### Key Finding (March 13, 2026)
+
+Both directions now tested:
+
+| Model | κ active | What breaks | Best κ | H₀ achieved | Can reach 73? |
+|-------|----------|-------------|--------|-------------|---------------|
+| Early Glass | before z=1100 | r_s (acoustic peaks) | 0.998 | 66.8 | No |
+| Late Glass | after z=1100 | ISW + lensing | 1.000 | 67.4 | No |
+
+### Research Timeline (5 notebooks)
 
 The theory evolved through iterative testing. Each notebook is self-contained and documents what was tried and what was learned:
 
@@ -142,9 +155,10 @@ The theory evolved through iterative testing. Each notebook is self-contained an
 | v1 | Feb 19 | [![v1](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lawdroid/class_public/blob/feature/kappa-evolution/GD_CLASS_Explorer_v1_rigid.ipynb) | kappa=1.176 (weaker gravity) | H_0 formula was wrong; rigid model makes tension worse |
 | v2 | Feb 26 | [![v2](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lawdroid/class_public/blob/feature/kappa-evolution/GD_CLASS_Explorer_v2_compliant.ipynb) | kappa=0.85 (stronger gravity) | Step gives H_0=73 but breaks CMB; smooth kills the effect |
 | v3 | Mar 5 | [![v3](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lawdroid/class_public/blob/feature/kappa-evolution/GD_CLASS_Explorer.ipynb) | kappa=0.96-0.98 | Re-fitted params: H_0=71 with chi2/dof=1.26 |
-| **v4** | **Mar 12** | [![v4](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lawdroid/class_public/blob/feature/kappa-evolution/GD_MCMC_Results_v4.ipynb) | **7-param MCMC** | **kappa=0.998±0.001, H₀=66.8±0.9 — Hubble tension not resolved** |
+| v4 | Mar 12 | [![v4](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lawdroid/class_public/blob/feature/kappa-evolution/GD_MCMC_Results_v4.ipynb) | 7-param MCMC | kappa=0.998±0.001, H₀=66.8±0.9 — Hubble tension not resolved |
+| **v5** | **Mar 13** | [![v5](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lawdroid/class_public/blob/feature/kappa-evolution/GD_Late_Glass_v5.ipynb) | **Late Glass (inverted timeline)** | **κ=1.0 before recomb, κ_c after — χ² wall persists, best κ=1.000** |
 
-**Narrative:** v1 discovered the H_0 formula error and that rigid inclusions go the wrong direction. v2 pivoted to compliant inclusions and confirmed H_0=73 is achievable but only with a sharp transition that destroys the CMB. v3 solved this by re-fitting cosmological parameters for each kappa, finding the tradeoff curve between H_0 and CMB fit quality. **v4 ran full MCMC as the adjudicator demanded — the data constrains kappa to within 0.2% of standard gravity.**
+**Narrative:** v1 discovered the H_0 formula error and that rigid inclusions go the wrong direction. v2 pivoted to compliant inclusions and confirmed H_0=73 is achievable but only with a sharp transition that destroys the CMB. v3 solved this by re-fitting cosmological parameters for each kappa, finding the tradeoff curve between H_0 and CMB fit quality. v4 ran full MCMC as the adjudicator demanded — the data constrains kappa to within 0.2% of standard gravity. **v5 tested Tom's Late Glass proposal (inverted timeline) — the χ² wall persists because ISW and lensing detect the post-recombination modification.**
 
 ---
 
